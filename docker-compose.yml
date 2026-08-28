@@ -1,0 +1,32 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: recovery_db
+    ports:
+      - "5432:5432"
+
+  backend:
+    build: .
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+    env_file:
+      - .env.example
+
+  worker:
+    build: .
+    command: python -m app.workers.executor.main
+    volumes:
+      - .:/app
+    depends_on:
+      - postgres
+    env_file:
+      - .env.example
