@@ -49,3 +49,9 @@ coverage.xml
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Temporary test scripts
+/list_models.py
+/test_prompt.py
+/test_three_live.py
+/verify_live_api.py

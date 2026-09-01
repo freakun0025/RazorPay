@@ -1,3 +1,3 @@
-# TODO: Implement Gemini AI client bounded integration
+# TODO: Implement OpenAI-compatible Nemotron AI client bounded integration
 class AIGatewayClient:
     pass

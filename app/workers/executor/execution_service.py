@@ -7,6 +7,10 @@ from app.persistence.repositories.job_repo import JobRepository, StaleWorkerErro
 from app.integrations.payment_gateway.mock_client import MockGatewayClient, GatewayTimeoutError
 from datetime import datetime, timedelta
 
+from app.ai.contracts import RecoveryDecisionContext, RecoveryDecision
+from app.ai.gateway.provider import NemotronProvider
+from app.ai.exceptions import AIDecisionError
+
 logger = logging.getLogger(__name__)
 
 class ExecutionService:
@@ -23,7 +27,148 @@ class ExecutionService:
             if not job:
                 self.session.rollback()
                 return False
+                
+            job_type = job.job_type
+            
+            if job_type == "EVALUATE_RECOVERY":
+                return self._process_evaluate_recovery(job)
+            elif job_type == "EXECUTE_CHARGE":
+                return self._process_execute_charge(job)
+            else:
+                self.session.rollback()
+                return False
+        except Exception:
+            self.session.rollback()
+            raise
 
+    def _process_evaluate_recovery(self, job) -> bool:
+        try:
+            case = self.session.query(RecoveryCase).filter_by(id=job.recovery_case_id).with_for_update().first()
+            payment = self.session.query(Payment).filter_by(id=case.payment_id).with_for_update().first()
+
+            if payment.status == PaymentState.SUCCEEDED:
+                job.status = JobState.CANCELLED
+                self.session.commit()
+                return True
+
+            days_since = (datetime.utcnow() - case.started_at).days
+            
+            context = RecoveryDecisionContext(
+                failure_reason=case.failure_reason,
+                attempt_count=job.attempt_count,
+                days_since_failure=days_since,
+                amount=float(case.amount_at_risk),
+                currency=case.currency
+            )
+            job_id = job.id
+            self.session.commit()
+        except Exception:
+            self.session.rollback()
+            raise
+
+        # NETWORK BOUNDARY
+        try:
+            provider = NemotronProvider()
+            decision = provider.decide(context)
+        except AIDecisionError as e:
+            self._finalize_evaluate_error(job_id, str(e))
+            return True
+        except Exception as e:
+            self._finalize_evaluate_error(job_id, str(e))
+            return True
+
+        # TX2
+        self._finalize_evaluate_decision(job_id, decision)
+        return True
+
+    def _finalize_evaluate_error(self, job_id, error_msg):
+        self.session.begin()
+        try:
+            job = self.session.query(RecoveryJob).filter_by(id=job_id).first()
+            if not job or job.locked_by != self.worker_id:
+                raise StaleWorkerError("Lost lease")
+            job.status = JobState.FAILED
+            job.last_error = error_msg
+            
+            case = self.session.query(RecoveryCase).filter_by(id=job.recovery_case_id).first()
+            if job.attempt_count < job.max_attempts:
+                self.session.add(RecoveryJob(
+                    recovery_case_id=case.id,
+                    job_type="EVALUATE_RECOVERY",
+                    status=JobState.PENDING,
+                    scheduled_for=datetime.utcnow(),
+                    available_at=datetime.utcnow() + timedelta(minutes=15),
+                    max_attempts=job.max_attempts,
+                    attempt_count=job.attempt_count
+                ))
+            else:
+                from app.persistence.models.recovery import RecoveryState
+                case.status = RecoveryState.STOPPED
+                
+            self.session.commit()
+        except Exception:
+            self.session.rollback()
+            raise
+
+    def _finalize_evaluate_decision(self, job_id, decision: RecoveryDecision):
+        self.session.begin()
+        try:
+            job = self.session.query(RecoveryJob).filter_by(id=job_id).first()
+            if not job or job.locked_by != self.worker_id:
+                raise StaleWorkerError("Lost lease")
+                
+            case = self.session.query(RecoveryCase).filter_by(id=job.recovery_case_id).with_for_update().first()
+            payment = self.session.query(Payment).filter_by(id=case.payment_id).with_for_update().first()
+
+            if payment.status == PaymentState.SUCCEEDED:
+                job.status = JobState.CANCELLED
+                self.session.commit()
+                return
+
+            from app.persistence.models.recovery import RecoveryDecision as DBDecision
+            db_dec = DBDecision(
+                recovery_case_id=case.id,
+                decision_source="AI",
+                action_type=decision.action,
+                parameters_json={"confidence": decision.confidence},
+                reason=decision.reason,
+                policy_result="APPROVED"
+            )
+            self.session.add(db_dec)
+            
+            job.status = JobState.SUCCEEDED
+            
+            if decision.action == "CHARGE":
+                self.session.add(RecoveryJob(
+                    recovery_case_id=case.id,
+                    job_type="EXECUTE_CHARGE",
+                    status=JobState.PENDING,
+                    scheduled_for=datetime.utcnow(),
+                    available_at=datetime.utcnow(),
+                    max_attempts=job.max_attempts,
+                    attempt_count=job.attempt_count
+                ))
+            elif decision.action == "ABORT":
+                from app.persistence.models.recovery import RecoveryState
+                case.status = RecoveryState.STOPPED
+            elif decision.action == "DELAY":
+                self.session.add(RecoveryJob(
+                    recovery_case_id=case.id,
+                    job_type="EVALUATE_RECOVERY",
+                    status=JobState.PENDING,
+                    scheduled_for=datetime.utcnow(),
+                    available_at=datetime.utcnow() + timedelta(days=1),
+                    max_attempts=job.max_attempts,
+                    attempt_count=job.attempt_count
+                ))
+                
+            self.session.commit()
+        except Exception:
+            self.session.rollback()
+            raise
+
+    def _process_execute_charge(self, job) -> bool:
+        try:
             case = self.session.query(RecoveryCase).filter_by(id=job.recovery_case_id).with_for_update().first()
             payment = self.session.query(Payment).filter_by(id=case.payment_id).with_for_update().first()
 
@@ -132,4 +277,3 @@ class ExecutionService:
         except Exception:
             self.session.rollback()
             raise
-

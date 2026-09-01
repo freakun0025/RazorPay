@@ -9,8 +9,9 @@ dependencies = [
     "sqlalchemy>=2.0.0",
     "alembic>=1.11.0",
     "pydantic>=2.0.0",
-    "google-generativeai>=0.3.0",
-    "psycopg2-binary>=2.9.0"
+    
+    "psycopg2-binary>=2.9.0",
+    "openai>=1.0.0"
 ]
 
 [project.optional-dependencies]
@@ -18,3 +19,5 @@ dev = [
     "pytest>=7.4.0",
     "pytest-asyncio>=0.21.0"
 ]
+
+

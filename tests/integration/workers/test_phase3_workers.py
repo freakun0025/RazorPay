@@ -66,7 +66,7 @@ def create_job_scenario(session):
     
     job = RecoveryJob(
         recovery_case_id=case.id,
-        job_type="EVALUATE_RECOVERY",
+        job_type="EXECUTE_CHARGE",
         status=JobState.PENDING,
         scheduled_for=datetime.utcnow(),
         available_at=datetime.utcnow(),
@@ -294,6 +294,7 @@ def test_timeout_hierarchy_validation(monkeypatch):
     monkeypatch.setenv("GATEWAY_HTTP_TIMEOUT", "30")
     monkeypatch.setenv("WORKER_LEASE_TIMEOUT", "60")
     importlib.reload(app.config.settings)
+
 
 
 

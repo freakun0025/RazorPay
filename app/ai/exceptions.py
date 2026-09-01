@@ -1,0 +1,2 @@
+class AIDecisionError(Exception):
+    pass
