@@ -1,7 +1,6 @@
 from fastapi import FastAPI
+from app.api.routes import webhooks
 
-app = FastAPI(title="Revenue Recovery Engine")
+app = FastAPI(title="RazorPay Recovery Engine")
 
-@app.get("/health")
-async def health_check():
-    return {"status": "ok"}
+app.include_router(webhooks.router)

@@ -1,3 +1,4 @@
+import uuid
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -29,11 +30,12 @@ def session(engine):
     session.close()
 
 def test_idempotency_key_uniqueness(session):
-    record1 = IdempotencyRecord(idempotency_key="key_123", request_hash="hash1", response_status=200)
+    k = str(uuid.uuid4())
+    record1 = IdempotencyRecord(idempotency_key=k, request_hash="hash1", response_status=200)
     session.add(record1)
     session.commit()
 
-    record2 = IdempotencyRecord(idempotency_key="key_123", request_hash="hash2", response_status=200)
+    record2 = IdempotencyRecord(idempotency_key=k, request_hash="hash2", response_status=200)
     session.add(record2)
     
     with pytest.raises(IntegrityError):
@@ -41,12 +43,12 @@ def test_idempotency_key_uniqueness(session):
 
 def test_active_recovery_case_uniqueness(session):
     # Setup customer and payment
-    customer = Customer(external_id="cust_1", email="test@test.com", name="Test")
+    customer = Customer(external_id=str(uuid.uuid4()), email="test@test.com", name="Test")
     session.add(customer)
     session.commit()
 
     payment = Payment(
-        external_id="pay_1", customer_id=customer.id, 
+        external_id=str(uuid.uuid4()), customer_id=customer.id, 
         amount=100.0, currency="USD", status=PaymentState.FAILED
     )
     session.add(payment)
@@ -90,12 +92,12 @@ def test_active_recovery_case_uniqueness(session):
 
 def test_recovery_attempt_uniqueness(session):
     # Need customer, payment, case
-    customer = Customer(external_id="cust_2", email="test2@test.com", name="Test")
+    customer = Customer(external_id=str(uuid.uuid4()), email="test2@test.com", name="Test")
     session.add(customer)
     session.commit()
 
     payment = Payment(
-        external_id="pay_2", customer_id=customer.id, 
+        external_id=str(uuid.uuid4()), customer_id=customer.id, 
         amount=100.0, currency="USD", status=PaymentState.FAILED
     )
     session.add(payment)
@@ -123,3 +125,5 @@ def test_recovery_attempt_uniqueness(session):
     session.add(attempt2)
     with pytest.raises(IntegrityError):
         session.commit()
+
+

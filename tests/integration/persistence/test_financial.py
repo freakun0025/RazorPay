@@ -1,3 +1,4 @@
+import uuid
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -28,12 +29,12 @@ def session(engine):
 
 def test_financial_validation_db_layer_negative_amount(session):
     # Test if DB properly rejects negative amounts using CheckConstraint
-    customer = Customer(external_id="cust_fin2", email="testfin2@test.com", name="Test")
+    customer = Customer(external_id=str(uuid.uuid4()), email="testfin2@test.com", name="Test")
     session.add(customer)
     session.commit()
 
     payment = Payment(
-        external_id="pay_fin_negative", customer_id=customer.id, 
+        external_id=str(uuid.uuid4()), customer_id=customer.id, 
         amount=Decimal("-10.00"), currency="USD", status=PaymentState.FAILED
     )
     session.add(payment)
@@ -46,12 +47,12 @@ def test_financial_validation_db_layer_negative_amount(session):
 
 def test_financial_validation_db_layer_currency_length(session):
     # Test if DB rejects currency string longer than 3 characters
-    customer = Customer(external_id="cust_fin3", email="testfin3@test.com", name="Test")
+    customer = Customer(external_id=str(uuid.uuid4()), email="testfin3@test.com", name="Test")
     session.add(customer)
     session.commit()
 
     payment = Payment(
-        external_id="pay_fin_curr", customer_id=customer.id, 
+        external_id=str(uuid.uuid4()), customer_id=customer.id, 
         amount=Decimal("10.00"), currency="INVALID", status=PaymentState.FAILED
     )
     session.add(payment)
@@ -60,3 +61,4 @@ def test_financial_validation_db_layer_currency_length(session):
         session.commit()
         
     assert "value too long for type character varying(3)" in str(exc_info.value)
+
