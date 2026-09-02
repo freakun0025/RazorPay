@@ -24,3 +24,5 @@ AI_BASE_URL = os.environ.get("AI_BASE_URL", "https://openrouter.ai/api/v1")
 AI_MODEL = os.environ.get("AI_MODEL", "nvidia/nemotron-3.5-lightning:free")
 AI_API_KEY = os.environ.get("AI_API_KEY", "dummy-key")
 
+
+ADMIN_API_KEY = os.environ.get('ADMIN_API_KEY', 'default-insecure-admin-key')
