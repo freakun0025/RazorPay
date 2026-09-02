@@ -73,6 +73,7 @@ class RecoveryJob(Base):
     recovery_case_id = Column(UUID(as_uuid=True), ForeignKey("recovery_cases.id"), nullable=False)
     attempt_id = Column(UUID(as_uuid=True), ForeignKey("recovery_attempts.id"), nullable=True)
     job_type = Column(String, nullable=False)
+    payload = Column(JSONB, nullable=True, default=dict)
     status = Column(SQLEnum(JobState, name="job_state_enum"), nullable=False)
     scheduled_for = Column(DateTime, nullable=False)
     available_at = Column(DateTime, nullable=False)

@@ -1,3 +1,4 @@
+from app.domain.observability.audit import create_audit_event
 import logging
 import uuid
 from sqlalchemy.orm import Session
@@ -48,6 +49,7 @@ class ExecutionService:
 
             if payment.status == PaymentState.SUCCEEDED:
                 job.status = JobState.CANCELLED
+                create_audit_event(self.session, "RECOVERY_JOB", str(job.id), "JOB_CANCELLED", "WORKER", {"reason": "payment_already_succeeded"})
                 self.session.commit()
                 return True
 
@@ -104,6 +106,7 @@ class ExecutionService:
             else:
                 from app.persistence.models.recovery import RecoveryState
                 case.status = RecoveryState.STOPPED
+                create_audit_event(self.session, "RECOVERY_JOB", str(job.id), "AI_EVALUATION_FAILED", "WORKER", {"error": str(error)})
                 
             self.session.commit()
         except Exception:
@@ -122,6 +125,7 @@ class ExecutionService:
 
             if payment.status == PaymentState.SUCCEEDED:
                 job.status = JobState.CANCELLED
+                create_audit_event(self.session, "RECOVERY_JOB", str(job.id), "JOB_CANCELLED", "WORKER", {"reason": "payment_already_succeeded"})
                 self.session.commit()
                 return
 
@@ -135,6 +139,7 @@ class ExecutionService:
                 policy_result="APPROVED"
             )
             self.session.add(db_dec)
+            create_audit_event(self.session, "RECOVERY_JOB", str(job.id), "AI_EVALUATION_COMPLETED", "WORKER", {"action": decision.action, "confidence": decision.confidence})
             
             job.status = JobState.SUCCEEDED
             
@@ -174,6 +179,7 @@ class ExecutionService:
 
             if payment.status == PaymentState.SUCCEEDED:
                 job.status = JobState.CANCELLED
+                create_audit_event(self.session, "RECOVERY_JOB", str(job.id), "JOB_CANCELLED", "WORKER", {"reason": "payment_already_succeeded"})
                 self.session.commit()
                 return True
 
@@ -242,10 +248,12 @@ class ExecutionService:
             if result.get("status") == "succeeded":
                 attempt.status = AttemptState.SUCCEEDED
                 payment.status = PaymentState.SUCCEEDED
+                create_audit_event(self.session, "RECOVERY_JOB", str(job.id), "CHARGE_EXECUTION_COMPLETED", "WORKER", {"status": "succeeded"})
                 from app.persistence.models.recovery import RecoveryState
                 case.status = RecoveryState.RECOVERED
             else:
                 attempt.status = AttemptState.FAILED
+                create_audit_event(self.session, "RECOVERY_JOB", str(job.id), "CHARGE_EXECUTION_FAILED", "WORKER", {"status": "failed"})
                 if job.attempt_count < job.max_attempts:
                     self.session.add(RecoveryJob(
                         recovery_case_id=case.id,
@@ -259,6 +267,7 @@ class ExecutionService:
                 else:
                     from app.persistence.models.recovery import RecoveryState
                     case.status = RecoveryState.STOPPED
+                create_audit_event(self.session, "RECOVERY_JOB", str(job.id), "AI_EVALUATION_FAILED", "WORKER", {"error": str(error)})
             self.session.commit()
         except Exception:
             self.session.rollback()

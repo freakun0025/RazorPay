@@ -7,6 +7,8 @@ from fastapi import HTTPException, status
 from app.persistence.models.payment import Payment
 from app.persistence.models.recovery import RecoveryCase, RecoveryJob
 from app.domain.recovery.states import RecoveryState, PaymentState, JobState
+from app.domain.observability.audit import create_audit_event
+from app.utils.context import get_correlation_id
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,11 @@ class AdminOperationsService:
             if payment and payment.status == PaymentState.SUCCEEDED:
                 if case.status != RecoveryState.RECOVERED:
                     case.status = RecoveryState.RECOVERED
+                
+                # Observational audit for rejected mutation
+                create_audit_event(self.session, "RECOVERY_CASE", str(case.id), "ADMIN_STOP_REJECTED", "ADMIN", {"reason": "PAYMENT_SUCCEEDED"})
+                self.session.commit()
+                
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="Payment is already SUCCEEDED. Cannot stop case."
@@ -41,6 +48,7 @@ class AdminOperationsService:
                     detail=f"Cannot stop case in terminal state {case.status}"
                 )
 
+            old_status = case.status.value
             case.status = RecoveryState.STOPPED
 
             pending_jobs = self.session.query(RecoveryJob).filter_by(
@@ -48,6 +56,8 @@ class AdminOperationsService:
             ).all()
             for job in pending_jobs:
                 job.status = JobState.CANCELLED
+            
+            create_audit_event(self.session, "RECOVERY_CASE", str(case.id), "ADMIN_STOP_CASE", "ADMIN", {"old_status": old_status})
             
             self.session.commit()
             return case
@@ -69,6 +79,10 @@ class AdminOperationsService:
             if payment and payment.status == PaymentState.SUCCEEDED:
                 if case.status != RecoveryState.RECOVERED:
                     case.status = RecoveryState.RECOVERED
+                
+                create_audit_event(self.session, "RECOVERY_CASE", str(case.id), "ADMIN_RETRY_REJECTED", "ADMIN", {"reason": "PAYMENT_SUCCEEDED"})
+                self.session.commit()
+                
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="Payment is already SUCCEEDED. Cannot retry case."
@@ -86,6 +100,9 @@ class AdminOperationsService:
             ).all()
 
             if active_jobs:
+                create_audit_event(self.session, "RECOVERY_CASE", str(case.id), "ADMIN_RETRY_REJECTED", "ADMIN", {"reason": "ACTIVE_JOBS_EXIST"})
+                self.session.commit()
+                
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="Case currently has active pending or running jobs."
@@ -97,11 +114,15 @@ class AdminOperationsService:
                 scheduled_for=datetime.utcnow(),
                 status=JobState.PENDING,
                 max_attempts=3,
-                available_at=datetime.utcnow()
+                available_at=datetime.utcnow(),
+                payload={"correlation_id": get_correlation_id()}
             )
             self.session.add(new_job)
 
+            old_status = case.status.value
             case.status = RecoveryState.OPEN
+            
+            create_audit_event(self.session, "RECOVERY_CASE", str(case.id), "ADMIN_RETRY_CASE", "ADMIN", {"old_status": old_status})
             
             self.session.commit()
             return case

@@ -26,3 +26,7 @@ AI_API_KEY = os.environ.get("AI_API_KEY", "dummy-key")
 
 
 ADMIN_API_KEY = os.environ.get('ADMIN_API_KEY', 'default-insecure-admin-key')
+
+LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
+LOG_FORMAT = os.environ.get('LOG_FORMAT', 'json')
+
