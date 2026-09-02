@@ -30,6 +30,7 @@ class RecoveryCase(Base):
             unique=True,
             postgresql_where=sql_text("status NOT IN ('RECOVERED', 'ESCALATED', 'STOPPED')")
         ),
+        Index("ix_recovery_cases_created_at", "created_at"),
     )
 
 class RecoveryAttempt(Base):
@@ -49,6 +50,7 @@ class RecoveryAttempt(Base):
 
     __table_args__ = (
         UniqueConstraint("recovery_case_id", "attempt_number", name="uq_recovery_attempt_number"),
+        Index("ix_recovery_attempts_case_id", "recovery_case_id"),
     )
 
 class RecoveryDecision(Base):
@@ -65,6 +67,10 @@ class RecoveryDecision(Base):
     model_name = Column(String, nullable=True)
     prompt_version = Column(String, nullable=True)
     created_at = Column(DateTime, server_default=sql_text("CURRENT_TIMESTAMP"), nullable=False)
+
+    __table_args__ = (
+        Index("ix_recovery_decisions_case_id", "recovery_case_id"),
+    )
 
 class RecoveryJob(Base):
     __tablename__ = "recovery_jobs"
@@ -87,6 +93,7 @@ class RecoveryJob(Base):
 
     __table_args__ = (
         Index("ix_recovery_jobs_poll", "status", "available_at"),
+        Index("ix_recovery_jobs_case_id", "recovery_case_id"),
     )
 
 

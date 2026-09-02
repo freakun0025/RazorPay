@@ -25,7 +25,9 @@ AI_MODEL = os.environ.get("AI_MODEL", "nvidia/nemotron-3.5-lightning:free")
 AI_API_KEY = os.environ.get("AI_API_KEY", "dummy-key")
 
 
-ADMIN_API_KEY = os.environ.get('ADMIN_API_KEY', 'default-insecure-admin-key')
+ADMIN_API_KEY = os.environ.get('ADMIN_API_KEY')
+if not ADMIN_API_KEY or not ADMIN_API_KEY.strip():
+    raise ImproperlyConfigured('ADMIN_API_KEY environment variable must be set securely.')
 
 LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
 LOG_FORMAT = os.environ.get('LOG_FORMAT', 'json')

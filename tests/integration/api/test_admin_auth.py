@@ -1,4 +1,25 @@
 import pytest
+
+import os
+import importlib
+from app.config import settings
+
+def test_admin_api_key_valid_configuration():
+    # If the app booted, this should be true
+    assert settings.ADMIN_API_KEY is not None
+    assert settings.ADMIN_API_KEY != 'default-insecure-admin-key'
+
+def test_admin_api_key_missing_fails_closed(monkeypatch):
+    monkeypatch.delenv('ADMIN_API_KEY', raising=False)
+    with pytest.raises(Exception) as exc_info:
+        importlib.reload(settings)
+    assert 'ADMIN_API_KEY environment variable must be set securely' in str(exc_info.value)
+    
+    # Restore for other tests
+    monkeypatch.setenv('ADMIN_API_KEY', 'admin-secret-dev-key-123')
+    importlib.reload(settings)
+
+
 from fastapi.testclient import TestClient
 from app.main import app
 
