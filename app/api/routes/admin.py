@@ -39,3 +39,11 @@ def retry_case(case_id: UUID, db: Session = Depends(get_db)):
         case_id=case.id,
         case_status=case.status.value
     )
+
+from app.api.schemas.admin import AnalyticsResponse
+from datetime import datetime
+
+@router.get("/analytics/recovery", response_model=AnalyticsResponse)
+def get_recovery_analytics(start_at: datetime, end_at: datetime, db: Session = Depends(get_db)):
+    service = AdminOperationsService(db)
+    return service.get_recovery_analytics(start_at, end_at)
