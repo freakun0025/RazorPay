@@ -1,3 +1,4 @@
+from app.utils.context import get_correlation_id
 from app.domain.observability.audit import create_audit_event
 import logging
 import uuid
@@ -28,6 +29,10 @@ class ExecutionService:
             if not job:
                 self.session.rollback()
                 return False
+                
+            if job.payload and "correlation_id" in job.payload:
+                from app.utils.context import set_correlation_id
+                set_correlation_id(job.payload["correlation_id"])
                 
             job_type = job.job_type
             
@@ -101,7 +106,8 @@ class ExecutionService:
                     scheduled_for=datetime.utcnow(),
                     available_at=datetime.utcnow() + timedelta(minutes=15),
                     max_attempts=job.max_attempts,
-                    attempt_count=job.attempt_count
+                    attempt_count=job.attempt_count,
+                    payload={"correlation_id": get_correlation_id()}
                 ))
             else:
                 from app.persistence.models.recovery import RecoveryState
@@ -151,7 +157,8 @@ class ExecutionService:
                     scheduled_for=datetime.utcnow(),
                     available_at=datetime.utcnow(),
                     max_attempts=job.max_attempts,
-                    attempt_count=job.attempt_count
+                    attempt_count=job.attempt_count,
+                    payload={"correlation_id": get_correlation_id()}
                 ))
             elif decision.action == "ABORT":
                 from app.persistence.models.recovery import RecoveryState
@@ -164,7 +171,8 @@ class ExecutionService:
                     scheduled_for=datetime.utcnow(),
                     available_at=datetime.utcnow() + timedelta(days=1),
                     max_attempts=job.max_attempts,
-                    attempt_count=job.attempt_count
+                    attempt_count=job.attempt_count,
+                    payload={"correlation_id": get_correlation_id()}
                 ))
                 
             self.session.commit()
@@ -262,12 +270,13 @@ class ExecutionService:
                         scheduled_for=datetime.utcnow(),
                         available_at=datetime.utcnow(),
                         max_attempts=job.max_attempts,
-                        attempt_count=job.attempt_count
-                    ))
+                        attempt_count=job.attempt_count,
+                    payload={"correlation_id": get_correlation_id()}
+                ))
                 else:
-                    from app.persistence.models.recovery import RecoveryState
+                    from app.domain.recovery.states import RecoveryState
                     case.status = RecoveryState.STOPPED
-                create_audit_event(self.session, "RECOVERY_JOB", str(job.id), "AI_EVALUATION_FAILED", "WORKER", {"error": str(error)})
+                    create_audit_event(self.session, "RECOVERY_CASE", str(case.id), "CHARGE_EXHAUSTED", "WORKER", {"reason": "max_attempts_reached"})
             self.session.commit()
         except Exception:
             self.session.rollback()
@@ -286,3 +295,4 @@ class ExecutionService:
         except Exception:
             self.session.rollback()
             raise
+

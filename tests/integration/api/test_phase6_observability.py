@@ -54,7 +54,7 @@ def test_logging_scrubs_secrets():
     formatted = formatter.format(record)
     data = json.loads(formatted)
     assert "sk-" not in data["message"]
-    assert data["message"] == "[SCRUBBED SENSITIVE DATA]"
+    assert data["message"] == "Bearer [SCRUBBED]"
 
 def test_audit_event_created_on_webhook():
     db = TestingSessionLocal()

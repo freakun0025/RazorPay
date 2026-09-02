@@ -12,13 +12,12 @@ def create_audit_event(
     payload: Dict[str, Any],
     actor_id: Optional[str] = None
 ) -> None:
-    """
+    '''
     Creates an AuditEvent in the given database session.
     It deliberately DOES NOT commit the session.
     The caller is responsible for committing the session so the state change
     and audit log are atomically coupled.
-    """
-    # Scrub sensitive payload keys just in case
+    '''
     safe_payload = _scrub_payload(payload)
     
     audit = AuditEvent(
@@ -32,14 +31,22 @@ def create_audit_event(
     )
     session.add(audit)
 
-def _scrub_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
-    safe_copy = dict(payload)
-    sensitive_keys = {"api_key", "password", "secret", "authorization", "sk-"}
+def _scrub_payload(payload: Any) -> Any:
+    sensitive_keys = {"api_key", "password", "secret", "authorization", "sk-", "token"}
     
-    for key, value in safe_copy.items():
-        if any(sec_key in key.lower() for sec_key in sensitive_keys):
-            safe_copy[key] = "[SCRUBBED SENSITIVE DATA]"
-        elif isinstance(value, str) and ("sk-" in value or "Bearer " in value):
-            safe_copy[key] = "[SCRUBBED SENSITIVE DATA]"
-            
-    return safe_copy
+    if isinstance(payload, dict):
+        safe_copy = {}
+        for key, value in payload.items():
+            if any(sec_key in str(key).lower() for sec_key in sensitive_keys):
+                safe_copy[key] = "[SCRUBBED SENSITIVE DATA]"
+            else:
+                safe_copy[key] = _scrub_payload(value)
+        return safe_copy
+    elif isinstance(payload, list):
+        return [_scrub_payload(item) for item in payload]
+    elif isinstance(payload, str):
+        if "sk-" in payload or "Bearer " in payload:
+            return "[SCRUBBED SENSITIVE DATA]"
+        return payload
+    else:
+        return payload
