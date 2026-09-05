@@ -1384,21 +1384,7 @@ Before running the system in a real environment:
 
 ---
 
-# Documentation
 
-Additional project documentation:
-
-| Document | Purpose |
-|---|---|
-| `context/PRD.md` | Product requirements and scope |
-| `context/Architecture.md` | Full system architecture |
-| `context/architecture-essentials.md` | Condensed architecture reference |
-| `context/AGENTS.md` | Engineering/agent instructions |
-| `context/CLAUDE.md` | Compatibility/reference entry point |
-| `context/SCAFFOLD.md` | Initial project scaffold |
-| `docs/adr/README.md` | Architecture Decision Records |
-
----
 
 # Project status
 
