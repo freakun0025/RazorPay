@@ -14,6 +14,7 @@ def validate_timeouts(gateway_timeout, lease_timeout, ai_timeout):
         )
 
 GATEWAY_HTTP_TIMEOUT = float(os.environ.get("GATEWAY_HTTP_TIMEOUT", 30))
+WORKER_POLL_INTERVAL = float(os.environ.get("WORKER_POLL_INTERVAL", 5.0))
 WORKER_LEASE_TIMEOUT = float(os.environ.get("WORKER_LEASE_TIMEOUT", 60))
 AI_TIMEOUT = float(os.environ.get("AI_TIMEOUT", 10))
 

@@ -70,7 +70,7 @@ def create_mock_attempt(db, cid, case_id, status, attempt_num=1):
 
 @pytest.mark.anyio
 async def test_empty_batch_returns_zero_metrics(client):
-    headers = {"X-Admin-API-Key": "admin-secret-dev-key-123"}
+    headers = {"X-Admin-API-Key": "test-admin-key"}
     resp = await client.get("/admin/analytics/recovery?start_at=1999-01-01T00:00:00&end_at=1999-02-01T00:00:00", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
@@ -83,7 +83,7 @@ async def test_admin_auth_required(client):
 
 @pytest.mark.anyio
 async def test_invalid_time_range_rejected(client):
-    headers = {"X-Admin-API-Key": "admin-secret-dev-key-123"}
+    headers = {"X-Admin-API-Key": "test-admin-key"}
     resp = await client.get("/admin/analytics/recovery?start_at=1999-02-01T00:00:00&end_at=1999-01-01T00:00:00", headers=headers)
     assert resp.status_code == 400
 
@@ -111,7 +111,7 @@ async def test_recovery_analytics_calculations(client):
 
     db.close()
     
-    headers = {"X-Admin-API-Key": "admin-secret-dev-key-123"}
+    headers = {"X-Admin-API-Key": "test-admin-key"}
     resp = await client.get("/admin/analytics/recovery?start_at=1999-01-01T00:00:00&end_at=1999-02-01T00:00:00", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
@@ -150,7 +150,7 @@ async def test_time_range_boundaries(client):
     create_mock_case(db, c3, 100.0, "USD", RecoveryState.RECOVERED, datetime(1998, 2, 1)) # Outside range
     db.close()
     
-    headers = {"X-Admin-API-Key": "admin-secret-dev-key-123"}
+    headers = {"X-Admin-API-Key": "test-admin-key"}
     resp = await client.get("/admin/analytics/recovery?start_at=1998-01-01T00:00:00&end_at=1998-02-01T00:00:00", headers=headers)
     assert resp.status_code == 200
     usd = resp.json()["metrics_by_currency"]["USD"]
@@ -164,7 +164,7 @@ async def test_zero_denominator_does_not_produce_nan(client):
     create_mock_case(db, c1, 0.0, "USD", RecoveryState.OPEN, datetime(1999, 1, 15))
     db.close()
     
-    headers = {"X-Admin-API-Key": "admin-secret-dev-key-123"}
+    headers = {"X-Admin-API-Key": "test-admin-key"}
     resp = await client.get("/admin/analytics/recovery?start_at=1999-01-01T00:00:00&end_at=1999-02-01T00:00:00", headers=headers)
     usd = resp.json()["metrics_by_currency"]["USD"]
     assert usd["recovery_rate"] == 0.0
@@ -178,7 +178,7 @@ async def test_analytics_does_not_mutate_state(client):
     old_updated = case.updated_at
     db.close()
     
-    headers = {"X-Admin-API-Key": "admin-secret-dev-key-123"}
+    headers = {"X-Admin-API-Key": "test-admin-key"}
     resp = await client.get("/admin/analytics/recovery?start_at=1999-01-01T00:00:00&end_at=1999-02-01T00:00:00", headers=headers)
     assert resp.status_code == 200
     
@@ -195,7 +195,7 @@ async def test_audit_event_is_atomic(client):
     initial_count = db.query(AuditEvent).filter_by(event_type="ANALYTICS_ACCESSED").count()
     db.close()
     
-    headers = {"X-Admin-API-Key": "admin-secret-dev-key-123"}
+    headers = {"X-Admin-API-Key": "test-admin-key"}
     resp = await client.get("/admin/analytics/recovery?start_at=1999-01-01T00:00:00&end_at=1999-02-01T00:00:00", headers=headers)
     assert resp.status_code == 200
     

@@ -16,7 +16,7 @@ def test_admin_api_key_missing_fails_closed(monkeypatch):
     assert 'ADMIN_API_KEY environment variable must be set securely' in str(exc_info.value)
     
     # Restore for other tests
-    monkeypatch.setenv('ADMIN_API_KEY', 'admin-secret-dev-key-123')
+    monkeypatch.setenv('ADMIN_API_KEY', 'test-admin-key')
     importlib.reload(settings)
 
 
@@ -39,6 +39,6 @@ def test_admin_invalid_auth():
 def test_admin_authorized_not_found():
     response = client.get(
         "/admin/cases/00000000-0000-0000-0000-000000000000",
-        headers={"X-Admin-API-Key": "admin-secret-dev-key-123"}
+        headers={"X-Admin-API-Key": "test-admin-key"}
     )
     assert response.status_code == 404

@@ -112,7 +112,7 @@ class ExecutionService:
             else:
                 from app.persistence.models.recovery import RecoveryState
                 case.status = RecoveryState.STOPPED
-                create_audit_event(self.session, "RECOVERY_JOB", str(job.id), "AI_EVALUATION_FAILED", "WORKER", {"error": str(error)})
+                create_audit_event(self.session, "RECOVERY_JOB", str(job.id), "AI_EVALUATION_FAILED", "WORKER", {"error": str(error_msg)})
                 
             self.session.commit()
         except Exception:

@@ -23,7 +23,7 @@ def setup_db():
     yield
 
 client = TestClient(app)
-HEADERS = {"X-Admin-API-Key": "admin-secret-dev-key-123"}
+HEADERS = {"X-Admin-API-Key": "test-admin-key"}
 
 def test_admin_get_case():
     db = TestingSessionLocal()
