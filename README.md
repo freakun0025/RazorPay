@@ -197,11 +197,7 @@ The AI has no direct authority to:
                            └──────────────────────┘
 ```
 
-For the deeper architectural specification, see:
 
-- [`context/Architecture.md`](context/Architecture.md)
-- [`context/architecture-essentials.md`](context/architecture-essentials.md)
-- [`context/PRD.md`](context/PRD.md)
 
 ---
 
