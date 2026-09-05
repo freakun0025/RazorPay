@@ -1,5 +1,7 @@
 version: '3.8'
+
 services:
+
   postgres:
     image: postgres:15-alpine
     environment:
@@ -20,6 +22,8 @@ services:
       - postgres
     env_file:
       - .env
+    environment:
+      DATABASE_URL: postgresql://user:password@postgres:5432/recovery_db
 
   worker:
     build: .
@@ -30,3 +34,5 @@ services:
       - postgres
     env_file:
       - .env
+    environment:
+      DATABASE_URL: postgresql://user:password@postgres:5432/recovery_db
